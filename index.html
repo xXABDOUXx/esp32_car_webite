@@ -12,7 +12,7 @@
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            background: linear-gradient(135deg, #000000, #b21f1f, #000000);
+            background: linear-gradient(180deg, #000000, #b21f1f);
             color: white;
             display: flex;
             justify-content: center;
@@ -260,7 +260,7 @@
     <div class="scale-container">
         <main class="main-container">
             <section class="video-container">
-                <img id="video-stream" src="placeholder.jpg" onerror="this.onerror=null;this.src='placeholder.jpg';" alt="ESP32-CAM Stream" width="800">
+                <iframe id="video-stream" src="" onerror="this.onerror=null;this.src='placeholder.jpg';" title="ESP32-CAM Stream" width="640" height="480" style="border-radius: 10px; border: 3px solid white;"></iframe>
             </section>
             <div class="separator"></div>
             <section class="controls">
@@ -284,56 +284,70 @@
         </main>
     </div>
 
-    <script>
-        const esp32CamIpInput = document.getElementById('esp32CamIp');
-        const esp32CarIpInput = document.getElementById('esp32CarIp');
-        const secretKeyInput = document.getElementById('secretKey');
-        esp32CamIpInput.value = localStorage.getItem('esp32CamIp') || '';
-        esp32CarIpInput.value = localStorage.getItem('esp32CarIp') || '';
-        secretKeyInput.value = localStorage.getItem('secretKey') || 'SECRET_KEY123';
+  <script>
+    const esp32CamIpInput = document.getElementById('esp32CamIp');
+    const esp32CarIpInput = document.getElementById('esp32CarIp');
+    const secretKeyInput = document.getElementById('secretKey');
+    const videoStream = document.getElementById('video-stream');
+    let ws;
 
-        let ws;
+    function openSettingsModal() {
+      document.getElementById('settingsModal').style.display = 'block';
+    }
 
-        function connectWebSocket() {
-            if (ws) {
-                ws.close(); 
-            }
-            ws = new WebSocket("ws://" + esp32CarIpInput.value + ":81/");
+    function saveSettings() {
+      const camIp = esp32CamIpInput.value;
+      const carIp = esp32CarIpInput.value;
+      const key = secretKeyInput.value;
 
-            ws.onopen = () => {
-                document.getElementById('status').innerText = "Connected";
-                ws.send(secretKeyInput.value); 
-            };
-            
-            ws.onmessage = (event) => {
-                console.log("ESP32 Response:", event.data);
-            };
-            
-            ws.onclose = () => {
-                document.getElementById('status').innerText = "Disconnected";
-            };
-        }
+      localStorage.setItem('esp32CamIp', camIp);
+      localStorage.setItem('esp32CarIp', carIp);
+      localStorage.setItem('secretKey', key);
 
-        function saveSettings() {
-            localStorage.setItem('esp32CamIp', esp32CamIpInput.value);
-            localStorage.setItem('esp32CarIp', esp32CarIpInput.value);
-            localStorage.setItem('secretKey', secretKeyInput.value);
-            const modal = document.getElementById('settingsModal');
-            modal.style.display = 'none';
-            connectWebSocket(); 
-        }
+      document.getElementById('settingsModal').style.display = 'none';
 
-        function openSettingsModal() {
-            const modal = document.getElementById('settingsModal');
-            modal.style.display = 'block';
-        }
+      if (camIp) {
+        videoStream.src = `http://${camIp}`;
+      }
 
-        function sendCommand(command) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(command);
-            }
-        }
-    </script>
+      connectWebSocket();
+    }
+
+    function connectWebSocket() {
+      if (ws) ws.close();
+      const ip = esp32CarIpInput.value;
+      if (!ip) return;
+
+      ws = new WebSocket("ws://" + ip + ":81/");
+      ws.onopen = () => {
+        document.getElementById('status').innerText = "Connected";
+        ws.send(secretKeyInput.value);
+      };
+      ws.onclose = () => {
+        document.getElementById('status').innerText = "Disconnected";
+      };
+      ws.onerror = () => {
+        document.getElementById('status').innerText = "Error";
+      };
+    }
+
+    function sendCommand(command) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(command);
+      }
+    }
+
+    window.onload = () => {
+      esp32CamIpInput.value = localStorage.getItem('esp32CamIp') || '';
+      esp32CarIpInput.value = localStorage.getItem('esp32CarIp') || '';
+      secretKeyInput.value = localStorage.getItem('secretKey') || 'SECRET_KEY123';
+
+      const camIp = esp32CamIpInput.value;
+      if (camIp) videoStream.src = `http://${camIp}`;
+
+      if (esp32CarIpInput.value) connectWebSocket();
+    };
+  </script>
 
 
 </body>
